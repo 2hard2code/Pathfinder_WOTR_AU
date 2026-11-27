@@ -26,65 +26,6 @@ for(const key in FOLDER_NAMES){
     fs.mkdirSync(folderName);
 }
 
-
-// Main
-const inputsFilenames = fs.readdirSync(PATH_OF.IN());
-for(const filename of inputsFilenames){
-    if(fs.lstatSync(PATH_OF.IN(filename)).isDirectory()) continue; // Skip if a directory
-    if(!filename.endsWith(".zks")) continue; // Skip if not a save file [*.zks]
-    try{
-        console.log(`Working on save file [${filename}].`);
-        console.log("Backing up.");
-        fs.copyFileSync(PATH_OF.IN(filename), PATH_OF.BACKUP(filename));
-        console.log("Backup done.");
-    }catch(error){
-        console.log("=======================| ERROR |========================");
-        console.error("Backup failed. Message: ", error?.message ? error.message : "[NO_ERROR_MESSAGE]");
-        return;
-    }
-    try{
-        console.log(`Extracting [${PLAYER_CONFIG_FILENAME}].`);
-        execFileSync("7z.exe", ["e", filename, PLAYER_CONFIG_FILENAME, "-aoa"], { cwd: PATH_OF.IN() });
-        console.log("Extraction done.");
-    }catch(error){
-        console.log("=======================| ERROR |========================");
-        console.error("Extraction failed. Message: ", error?.message ? error.message : "[NO_ERROR_MESSAGE]");
-        return;
-    }
-    // JSON modification
-    try{
-        console.log(`Modifying [${PLAYER_CONFIG_FILENAME}].`);
-        const jsonText = fs.readFileSync(PATH_OF.IN(PLAYER_CONFIG_FILENAME), { encoding: "utf-8" });
-        const json = JSON.parse(jsonText);
-        modifyJson(json);
-        fs.writeFileSync(PATH_OF.IN(PLAYER_CONFIG_FILENAME), JSON.stringify(json), { encoding: "utf-8" });
-        console.log(`Modification done.`);
-    }catch(error){
-        console.log("=======================| ERROR |========================");
-        console.error("Modification failed. Message: ", error?.message ? error.message : "[NO_ERROR_MESSAGE]");
-        return;
-    }
-    try{
-        console.log(`Archiving [${PLAYER_CONFIG_FILENAME}].`);
-        execFileSync("7z.exe", ["a", filename, PLAYER_CONFIG_FILENAME, "-sdel"], { cwd: PATH_OF.IN() });
-        console.log("Archivation done.");
-    }catch(error){
-        console.log("=======================| ERROR |========================");
-        console.error("Archivation failed Message: ", error?.message ? error.message : "[NO_ERROR_MESSAGE]");
-        return;
-    }
-    try{
-        console.log(`Moving [${filename}] to [${FOLDER_NAMES.OUTPUT}].`);
-        fs.renameSync(PATH_OF.IN(filename), PATH_OF.OUT(filename));
-        console.log("Move done.");
-    }catch(error){
-        console.log("=======================| ERROR |========================");
-        console.error("Move failed. Message: ", error?.message ? error.message : "[NO_ERROR_MESSAGE]");
-        return;
-    }
-}
-return;
-
 function modifyJson(json){
     const globalMaps = getGlobalMapsFromJson(json);
     const armies = getArmiesFromGlobalMaps(globalMaps);
@@ -143,4 +84,61 @@ function upgradeData(data){
     data.MaxSquadsCount.m_BaseValue = 14;
     console.log("Upgraded max squad count: ", data.MaxSquadsCount.m_BaseValue);
     console.log("=======================| DONE |=========================");
+}
+
+// Main
+const inputsFilenames = fs.readdirSync(PATH_OF.IN());
+for(const filename of inputsFilenames){
+    if(fs.lstatSync(PATH_OF.IN(filename)).isDirectory()) continue; // Skip if a directory
+    if(!filename.endsWith(".zks")) continue; // Skip if not a save file [*.zks]
+    try{
+        console.log(`Working on save file [${filename}].`);
+        console.log("Backing up.");
+        fs.copyFileSync(PATH_OF.IN(filename), PATH_OF.BACKUP(filename));
+        console.log("Backup done.");
+    }catch(error){
+        console.log("=======================| ERROR |========================");
+        console.error("Backup failed. Message: ", error?.message ? error.message : "[NO_ERROR_MESSAGE]");
+        continue;
+    }
+    try{
+        console.log(`Extracting [${PLAYER_CONFIG_FILENAME}].`);
+        execFileSync("7z.exe", ["e", filename, PLAYER_CONFIG_FILENAME, "-aoa"], { cwd: PATH_OF.IN() });
+        console.log("Extraction done.");
+    }catch(error){
+        console.log("=======================| ERROR |========================");
+        console.error("Extraction failed. Message: ", error?.message ? error.message : "[NO_ERROR_MESSAGE]");
+        continue;
+    }
+    // JSON modification
+    try{
+        console.log(`Modifying [${PLAYER_CONFIG_FILENAME}].`);
+        const jsonText = fs.readFileSync(PATH_OF.IN(PLAYER_CONFIG_FILENAME), { encoding: "utf-8" });
+        const json = JSON.parse(jsonText);
+        modifyJson(json);
+        fs.writeFileSync(PATH_OF.IN(PLAYER_CONFIG_FILENAME), JSON.stringify(json), { encoding: "utf-8" });
+        console.log(`Modification done.`);
+    }catch(error){
+        console.log("=======================| ERROR |========================");
+        console.error("Modification failed. Message: ", error?.message ? error.message : "[NO_ERROR_MESSAGE]");
+        continue;
+    }
+    try{
+        console.log(`Archiving [${PLAYER_CONFIG_FILENAME}].`);
+        execFileSync("7z.exe", ["a", filename, PLAYER_CONFIG_FILENAME, "-sdel"], { cwd: PATH_OF.IN() });
+        console.log("Archivation done.");
+    }catch(error){
+        console.log("=======================| ERROR |========================");
+        console.error("Archivation failed Message: ", error?.message ? error.message : "[NO_ERROR_MESSAGE]");
+        continue;
+    }
+    try{
+        console.log(`Moving [${filename}] to [${FOLDER_NAMES.OUTPUT}].`);
+        fs.renameSync(PATH_OF.IN(filename), PATH_OF.OUT(filename));
+        console.log("Move done.");
+    }catch(error){
+        console.log("=======================| ERROR |========================");
+        console.error("Move failed. Message: ", error?.message ? error.message : "[NO_ERROR_MESSAGE]");
+        continue;
+    }
 }
