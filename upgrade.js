@@ -5,7 +5,7 @@ const execFileSync = require("node:child_process").execFileSync;
 // Game
 const PLAYER_CONFIG_FILENAME = "player.json";
 const RANGERS_UNIT = "5f0d3d1d58db0524bada47fee54b41e3";
-const NEW_SQUAD_COUNT = 999_999;
+const NEW_SQUAD_COUNT = 10_000_000;
 
 // Script folders
 const FOLDER_NAMES = {
@@ -57,6 +57,8 @@ for(const filename of inputsFilenames){
         const jsonText = fs.readFileSync(PATH_OF.IN(PLAYER_CONFIG_FILENAME), { encoding: "utf-8" });
         const json = JSON.parse(jsonText);
         modifyJson(json);
+        fs.writeFileSync(PATH_OF.IN(PLAYER_CONFIG_FILENAME), JSON.stringify(json), { encoding: "utf-8" });
+        console.log(`Modification done.`);
     }catch(error){
         console.log("=======================| ERROR |========================");
         console.error("Modification failed. Message: ", error?.message ? error.message : "[NO_ERROR_MESSAGE]");
@@ -136,7 +138,7 @@ function upgradeData(data){
     for(const squad of squads){
         squad.Unit = RANGERS_UNIT;
         squad.Count = NEW_SQUAD_COUNT;
-        console.log(`Squad changed to [Rangers]x[${NEW_SQUAD_COUNT}].`);
+        console.log(`Squad changed to [${RANGERS_UNIT}]x[${NEW_SQUAD_COUNT}].`);
     }
     data.MaxSquadsCount.m_BaseValue = 14;
     console.log("Upgraded max squad count: ", data.MaxSquadsCount.m_BaseValue);
