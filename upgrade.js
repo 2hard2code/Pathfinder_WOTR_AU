@@ -6,7 +6,6 @@ const execFileSync = require("node:child_process").execFileSync;
 const PLAYER_CONFIG_FILENAME = "player.json";
 const RANGERS_UNIT = "5f0d3d1d58db0524bada47fee54b41e3";
 const NEW_SQUAD_COUNT = 999_999;
-const NEW_INFIRMARY_SIZE = 999_999;
 
 // Script folders
 const FOLDER_NAMES = {
@@ -40,7 +39,7 @@ for(const filename of inputsFilenames){
         console.log("Backup done.");
     }catch(error){
         console.log("=======================| ERROR |========================");
-        console.error("Backup failed: ", error?.message ? error.message : "[NO_ERROR_MESSAGE]");
+        console.error("Backup failed. Message: ", error?.message ? error.message : "[NO_ERROR_MESSAGE]");
         return;
     }
     try{
@@ -49,7 +48,7 @@ for(const filename of inputsFilenames){
         console.log("Extraction done.");
     }catch(error){
         console.log("=======================| ERROR |========================");
-        console.error("Extraction failed: ", error?.message ? error.message : "[NO_ERROR_MESSAGE]");
+        console.error("Extraction failed. Message: ", error?.message ? error.message : "[NO_ERROR_MESSAGE]");
         return;
     }
     // JSON modification
@@ -57,9 +56,10 @@ for(const filename of inputsFilenames){
         console.log(`Modifying [${PLAYER_CONFIG_FILENAME}].`);
         const jsonText = fs.readFileSync(PATH_OF.IN(PLAYER_CONFIG_FILENAME), { encoding: "utf-8" });
         const json = JSON.parse(jsonText);
-    }catch{
+        modifyJson(json);
+    }catch(error){
         console.log("=======================| ERROR |========================");
-        console.error("Modification failed: ", error?.message ? error.message : "[NO_ERROR_MESSAGE]");
+        console.error("Modification failed. Message: ", error?.message ? error.message : "[NO_ERROR_MESSAGE]");
         return;
     }
     try{
@@ -68,110 +68,77 @@ for(const filename of inputsFilenames){
         console.log("Archivation done.");
     }catch(error){
         console.log("=======================| ERROR |========================");
-        console.error("Archivation failed: ", error?.message ? error.message : "[NO_ERROR_MESSAGE]");
+        console.error("Archivation failed Message: ", error?.message ? error.message : "[NO_ERROR_MESSAGE]");
         return;
     }
     try{
-        console.log(`Moving the save file to [${FOLDER_NAMES.OUTPUT}].`);
+        console.log(`Moving [${filename}] to [${FOLDER_NAMES.OUTPUT}].`);
         fs.renameSync(PATH_OF.IN(filename), PATH_OF.OUT(filename));
         console.log("Move done.");
     }catch(error){
         console.log("=======================| ERROR |========================");
-        console.error("Move failed: ", error?.message ? error.message : "[NO_ERROR_MESSAGE]");
+        console.error("Move failed. Message: ", error?.message ? error.message : "[NO_ERROR_MESSAGE]");
         return;
     }
 }
 return;
 
-function modifyJson(){
-    const armies = playerJson.m_GlobalMaps[0].m_Armies;
+function modifyJson(json){
+    const globalMaps = getGlobalMapsFromJson(json);
+    const armies = getArmiesFromGlobalMaps(globalMaps);
     for(const army of armies){
         try{
-            const data = getArmyData(army);
+            const data = getDataFromArmy(army);
             const faction = getArmyFactionFromData(data);
-            if(faction !== "Crusaders") continue;
+            if(faction !== "Crusaders") continue; // Skip if not a player-controller army
             const id = army?.Id;
-            console.log("Found a crusader army. ID: ", id);
-            upgradeArmyData(data);
-        }catch(error){ console.log("Encountered an error: ", error?.message); }
+            console.log("Found a player-controlled army. ID: ", id);
+            upgradeData(data);
+        }catch(error){ console.log("Skipping army. Reason: ", error?.message ? error.message : "[NO_ERROR_MESSAGE]"); }
     }
 }
-
-function findValue(obj, target) {
-    for (const key of Object.keys(obj)) {
-        const value = obj[key];
-
-        if (value === target) {
-            // if (regex.test(value)) {
-            return key;
-        }
-
-        if (value !== null && typeof value === "object") {
-            const result = findValue(value, target);
-
-            if (result !== undefined) {
-                return `${key}.${result}`;
-            }
-        }
-    }
-
-    return undefined;
+// [Json] is the parsed file with no additional changes
+function getGlobalMapsFromJson(json){
+    if(!json || !(typeof json === "object")) throw new Error("[json] is falsey or is not an object.");
+    if(!Object.hasOwn(json, "m_GlobalMaps")) throw new Error("[json] has no key [m_GlobalMaps].");
+    const globalMaps = json.m_GlobalMaps;
+    if(!Array.isArray(globalMaps)) throw new Error("[globalMaps] is not an array.");
+    return globalMaps;
 }
-
-function getArmyData(army){
-    if(!army || !(typeof army === "object")) throw new Error("Army has no [Data].");
-    if(!Object.hasOwn(army, "Data")) throw new Error("Army has no [Data].");
-    if(!army || !(typeof army.Data === "object")) throw new Error("Army has no [Data].");
-    return army.Data;
+// [GlobalMaps] is config.m_GlobalMaps[]
+function getArmiesFromGlobalMaps(globalMaps){
+    if(!globalMaps || !Array.isArray(globalMaps)) throw new Error("[globalMaps] is falsey or is not an array.");
+    const globalMap = globalMaps[0]; // When I checked, [m_GlobalMaps] had only 2 elements, the second element had an empty array in [m_Armies], I assume this is the non-crusade map
+    if(!Object.hasOwn(globalMap, "m_Armies")) throw new Error("[globalMaps] has no key [m_Armies].");
+    const armies = globalMap.m_Armies;
+    if(!armies || !Array.isArray(armies)) throw new Error("[armies] is falsey or is not an array.");
+    return armies;
 }
+// [Army] is config.m_GlobalMaps[i].m_Armies[j]
+function getDataFromArmy(army){
+    if(!army || !(typeof army === "object")) throw new Error("[army] is falsey or is not an object.");
+    if(!Object.hasOwn(army, "Data")) throw new Error("[army] has no key [Data].");
+    const data = army.Data;
+    if(!(typeof data === "object")) throw new Error("[data] is not an object.");
+    return data;
+}
+// [Data] is config.m_GlobalMaps[i].m_Armies[j].Data
 function getArmyFactionFromData(data){
-    if(!Object.hasOwn(data, "Faction")) throw new Error("Army has no [Faction].");
+    if(!Object.hasOwn(data, "Faction")) throw new Error("[data] has no [Faction].");
     const faction = data.Faction;
-    // console.log("Faction: ", faction);
     return faction;
 }
-function upgradeArmyData(data){
+// [Data] is config.m_GlobalMaps[i].m_Armies[j].Data
+function upgradeData(data){
     console.log("Current max squad count: ", data.MaxSquadsCount.m_BaseValue);
-    // console.log("Max squad count modifiers: ", data.MaxSquadsCount.PersistentModifierList);
     const squads = data.m_Squads;
+    console.log("Current number of squads: ", squads.length);
     for(const squad of squads){
         squad.Unit = RANGERS_UNIT;
         squad.Count = NEW_SQUAD_COUNT;
-        console.log(`Squad changed to Rangers X ${NEW_SQUAD_COUNT}.`);
+        console.log(`Squad changed to [Rangers]x[${NEW_SQUAD_COUNT}].`);
     }
     data.MaxSquadsCount.m_BaseValue = 14;
-    // data.MaxSquadsCount.PersistentModifierList = [];
     console.log("Upgraded max squad count: ", data.MaxSquadsCount.m_BaseValue);
-    // console.log("Max squad count modifiers: ", data.MaxSquadsCount.PersistentModifierList);
-    console.log("==============================DONE==============================");
+    console.log("=======================| DONE |=========================");
 }
-
-// const leader = playerJson.m_LeadersManager.m_Leaders[6];
-// const army = playerJson.m_GlobalMaps[0].m_Armies[21];
-// const squads = army.Data.m_Squads;
-// // console.log(findValue(playerJson, "5640"));
-// // return;
-// // console.log(b.m_GlobalMaps["0"].m_Armies["21"].Data.m_ArmyName.ArmyName);
-// // console.log(b.m_GlobalMaps[0].m_Armies[21]);
-
-// console.log("leader.m_Stats.InfirmarySize.m_BaseValue: ", leader.m_Stats.InfirmarySize.m_BaseValue);
-// console.log("army.Data.MaxSquadsCount.m_BaseValue: ", army.Data.MaxSquadsCount.m_BaseValue);
-// console.log("army.Data.MaxSquadsCount.PersistentModifierList: ", army.Data.MaxSquadsCount.PersistentModifierList);
-
-// console.log("================UPDATING================");
-
-// leader.m_Stats.InfirmarySize.m_BaseValue = NEW_INFIRMARY_SIZE;
-// for(const armySquad of squads){
-//     armySquad.Unit = RANGERS_UNIT;
-//     armySquad.Count = NEW_SQUAD_COUNT;
-// }
-// army.Data.MaxSquadsCount.m_BaseValue = 14;
-// army.Data.MaxSquadsCount.PersistentModifierList = [];
-
-// console.log("================UPDATED================");
-
-// console.log("leader.m_Stats.InfirmarySize.m_BaseValue: ", leader.m_Stats.InfirmarySize.m_BaseValue);
-// console.log("army.Data.MaxSquadsCount.m_BaseValue: ", army.Data.MaxSquadsCount.m_BaseValue);
-// console.log("army.Data.MaxSquadsCount.PersistentModifierList: ", army.Data.MaxSquadsCount.PersistentModifierList);
-
-fs.writeFileSync("./out/player.json", JSON.stringify(playerJson), { encoding: "utf-8" });
